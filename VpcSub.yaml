@@ -1,0 +1,182 @@
+AWSTemplateFormatVersion: '2010-09-09'
+Description: >
+  VPC with Public and Private Subnets, Route Tables, Internet Gateway,
+  and associated resources. Designed for multi-AZ deployment.
+
+Parameters:
+  PJCode:
+    Type: String
+    Default: MakeNetwork
+    Description: Project code prefix for resource naming
+
+Resources:
+
+  # VPC 作成
+  MyVpc:
+    Type: AWS::EC2::VPC
+    Properties:
+      CidrBlock: 10.0.0.0/16
+      EnableDnsSupport: true
+      EnableDnsHostnames: true
+      InstanceTenancy: default
+      Tags:
+        - Key: Name
+          Value: !Sub "${PJCode}-vpc"
+
+  # Subnet 作成
+  PublicSubnet1A:
+    Type: AWS::EC2::Subnet
+    Properties:
+      VpcId: !Ref MyVpc
+      CidrBlock: 10.0.0.0/24
+      AvailabilityZone: ap-northeast-1a
+      MapPublicIpOnLaunch: true
+      Tags:
+        - Key: Name
+          Value: !Sub "${PJCode}-public-1a"
+
+  PublicSubnet1C:
+    Type: AWS::EC2::Subnet
+    Properties:
+      VpcId: !Ref MyVpc
+      CidrBlock: 10.0.1.0/24
+      AvailabilityZone: ap-northeast-1c
+      MapPublicIpOnLaunch: true
+      Tags:
+        - Key: Name
+          Value: !Sub "${PJCode}-public-1c"
+
+  PrivateSubnet1A:
+    Type: AWS::EC2::Subnet
+    Properties:
+      VpcId: !Ref MyVpc
+      CidrBlock: 10.0.3.0/24
+      AvailabilityZone: ap-northeast-1a
+      Tags:
+        - Key: Name
+          Value: !Sub "${PJCode}-private-1a"
+
+  PrivateSubnet1C:
+    Type: AWS::EC2::Subnet
+    Properties:
+      VpcId: !Ref MyVpc
+      CidrBlock: 10.0.4.0/24
+      AvailabilityZone: ap-northeast-1c
+      Tags:
+        - Key: Name
+          Value: !Sub "${PJCode}-private-1c"
+
+  # Internet Gateway　作成
+  MyInternetGateway:
+    Type: AWS::EC2::InternetGateway
+    Properties:
+      Tags:
+        - Key: Name
+          Value: !Sub "${PJCode}-igw"
+
+  # 作成したインターネットゲートウェイとVPCの紐付け
+  AttachGateway:
+    Type: AWS::EC2::VPCGatewayAttachment
+    Properties:
+      VpcId: !Ref MyVpc
+      InternetGatewayId: !Ref MyInternetGateway
+
+  # Route Table 作成
+  PublicRouteTable:
+    Type: AWS::EC2::RouteTable
+    Properties:
+      VpcId: !Ref MyVpc
+      Tags:
+        - Key: Name
+          Value: !Sub "${PJCode}-public-rt"
+
+  PrivateRouteTable:
+    Type: AWS::EC2::RouteTable
+    Properties:
+      VpcId: !Ref MyVpc
+      Tags:
+        - Key: Name
+          Value: !Sub "${PJCode}-private-rt"
+
+  # Routes
+  PublicDefaultRoute:
+    Type: AWS::EC2::Route
+    DependsOn: AttachGateway
+    Properties:
+      RouteTableId: !Ref PublicRouteTable
+      DestinationCidrBlock: 0.0.0.0/0
+      GatewayId: !Ref MyInternetGateway
+
+  # SubnetとRoute Tableの紐付け
+  PublicSubnet1ARouteTableAssociation:
+    Type: AWS::EC2::SubnetRouteTableAssociation
+    Properties:
+      SubnetId: !Ref PublicSubnet1A
+      RouteTableId: !Ref PublicRouteTable
+
+  PublicSubnet1CRouteTableAssociation:
+    Type: AWS::EC2::SubnetRouteTableAssociation
+    Properties:
+      SubnetId: !Ref PublicSubnet1C
+      RouteTableId: !Ref PublicRouteTable
+
+  PrivateSubnet1ARouteTableAssociation:
+    Type: AWS::EC2::SubnetRouteTableAssociation
+    Properties:
+      SubnetId: !Ref PrivateSubnet1A
+      RouteTableId: !Ref PrivateRouteTable
+
+  PrivateSubnet1CRouteTableAssociation:
+    Type: AWS::EC2::SubnetRouteTableAssociation
+    Properties:
+      SubnetId: !Ref PrivateSubnet1C
+      RouteTableId: !Ref PrivateRouteTable
+
+Outputs:
+  VpcId:
+    Description: VPC ID
+    Value: !Ref MyVpc
+    Export:
+      Name: !Sub "${PJCode}-VpcId"
+
+  PublicSubnet1AId:
+    Description: Public Subnet 1a ID
+    Value: !Ref PublicSubnet1A
+    Export:
+      Name: !Sub "${PJCode}-PublicSubnet1A"
+
+  PublicSubnet1CId:
+    Description: Public Subnet 1c ID
+    Value: !Ref PublicSubnet1C
+    Export:
+      Name: !Sub "${PJCode}-PublicSubnet1C"
+
+  PrivateSubnet1AId:
+    Description: Private Subnet 1a ID
+    Value: !Ref PrivateSubnet1A
+    Export:
+      Name: !Sub "${PJCode}-PrivateSubnet1A"
+
+  PrivateSubnet1CId:
+    Description: Private Subnet 1c ID
+    Value: !Ref PrivateSubnet1C
+    Export:
+      Name: !Sub "${PJCode}-PrivateSubnet1C"
+
+  PublicRouteTableId:
+    Description: Public Route Table ID
+    Value: !Ref PublicRouteTable
+    Export:
+      Name: !Sub "${PJCode}-PublicRouteTable"
+
+  PrivateRouteTableId:
+    Description: Private Route Table ID
+    Value: !Ref PrivateRouteTable
+    Export:
+      Name: !Sub "${PJCode}-PrivateRouteTable"
+
+  InternetGatewayId:
+    Description: Internet Gateway ID
+    Value: !Ref MyInternetGateway
+    Export:
+      Name: !Sub "${PJCode}-InternetGateway"
