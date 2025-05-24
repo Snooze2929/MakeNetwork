@@ -1,7 +1,6 @@
 AWSTemplateFormatVersion: '2010-09-09'
 Description: >
-  VPC with Public and Private Subnets, Route Tables, Internet Gateway,
-  and associated resources. Designed for multi-AZ deployment.
+  VPC with Subnets, Route Tables, Internet Gateway, and Security Groups
 
 Parameters:
   PJCode:
@@ -11,7 +10,7 @@ Parameters:
 
 Resources:
 
-  # VPC 作成
+  # VPC
   MyVpc:
     Type: AWS::EC2::VPC
     Properties:
@@ -23,7 +22,7 @@ Resources:
         - Key: Name
           Value: !Sub "${PJCode}-vpc"
 
-  # Subnet 作成
+  # Subnets
   PublicSubnet1A:
     Type: AWS::EC2::Subnet
     Properties:
@@ -66,7 +65,7 @@ Resources:
         - Key: Name
           Value: !Sub "${PJCode}-private-1c"
 
-  # Internet Gateway　作成
+  # Internet Gateway
   MyInternetGateway:
     Type: AWS::EC2::InternetGateway
     Properties:
@@ -74,14 +73,13 @@ Resources:
         - Key: Name
           Value: !Sub "${PJCode}-igw"
 
-  # 作成したインターネットゲートウェイとVPCの紐付け
   AttachGateway:
     Type: AWS::EC2::VPCGatewayAttachment
     Properties:
       VpcId: !Ref MyVpc
       InternetGatewayId: !Ref MyInternetGateway
 
-  # Route Table 作成
+  # Route Tables
   PublicRouteTable:
     Type: AWS::EC2::RouteTable
     Properties:
@@ -98,7 +96,6 @@ Resources:
         - Key: Name
           Value: !Sub "${PJCode}-private-rt"
 
-  # Routes
   PublicDefaultRoute:
     Type: AWS::EC2::Route
     DependsOn: AttachGateway
@@ -107,7 +104,7 @@ Resources:
       DestinationCidrBlock: 0.0.0.0/0
       GatewayId: !Ref MyInternetGateway
 
-  # SubnetとRoute Tableの紐付け
+  # Route Table Associations
   PublicSubnet1ARouteTableAssociation:
     Type: AWS::EC2::SubnetRouteTableAssociation
     Properties:
@@ -132,6 +129,60 @@ Resources:
       SubnetId: !Ref PrivateSubnet1C
       RouteTableId: !Ref PrivateRouteTable
 
+  # Security Groups
+  InstanceSecurityGroupEc2:
+    Type: AWS::EC2::SecurityGroup
+    Properties:
+      GroupDescription: Allow http and ssh
+      GroupName: ec2
+      VpcId: !Ref MyVpc
+      Tags:
+        - Key: Name
+          Value: !Join [ "-", [ !Ref PJCode, ec2 ] ]
+      SecurityGroupIngress:
+        - IpProtocol: tcp
+          FromPort: 80
+          ToPort: 80
+          CidrIp: 0.0.0.0/0
+        - IpProtocol: tcp
+          FromPort: 22
+          ToPort: 22
+          CidrIp: 0.0.0.0/0
+
+  InstanceSecurityGroupELB:
+    Type: AWS::EC2::SecurityGroup
+    Properties:
+      GroupDescription: Allow http and https
+      GroupName: ELB
+      VpcId: !Ref MyVpc
+      Tags:
+        - Key: Name
+          Value: !Join [ "-", [ !Ref PJCode, ELB ] ]
+      SecurityGroupIngress:
+        - IpProtocol: tcp
+          FromPort: 80
+          ToPort: 80
+          CidrIp: 0.0.0.0/0
+        - IpProtocol: tcp
+          FromPort: 443
+          ToPort: 443
+          CidrIp: 0.0.0.0/0
+
+  SecurityGroupRDS:
+    Type: AWS::EC2::SecurityGroup
+    Properties:
+      GroupDescription: Allow RDS
+      GroupName: RDS
+      VpcId: !Ref MyVpc
+      Tags:
+        - Key: Name
+          Value: !Join [ "-", [ !Ref PJCode, RDS ] ]
+      SecurityGroupIngress:
+        - IpProtocol: tcp
+          FromPort: 3306
+          ToPort: 3306
+          SourceSecurityGroupId: !Ref InstanceSecurityGroupEc2
+
 Outputs:
   VpcId:
     Description: VPC ID
@@ -140,43 +191,36 @@ Outputs:
       Name: !Sub "${PJCode}-VpcId"
 
   PublicSubnet1AId:
-    Description: Public Subnet 1a ID
     Value: !Ref PublicSubnet1A
     Export:
       Name: !Sub "${PJCode}-PublicSubnet1A"
 
   PublicSubnet1CId:
-    Description: Public Subnet 1c ID
     Value: !Ref PublicSubnet1C
     Export:
       Name: !Sub "${PJCode}-PublicSubnet1C"
 
   PrivateSubnet1AId:
-    Description: Private Subnet 1a ID
     Value: !Ref PrivateSubnet1A
     Export:
       Name: !Sub "${PJCode}-PrivateSubnet1A"
 
   PrivateSubnet1CId:
-    Description: Private Subnet 1c ID
     Value: !Ref PrivateSubnet1C
     Export:
       Name: !Sub "${PJCode}-PrivateSubnet1C"
 
   PublicRouteTableId:
-    Description: Public Route Table ID
     Value: !Ref PublicRouteTable
     Export:
       Name: !Sub "${PJCode}-PublicRouteTable"
 
   PrivateRouteTableId:
-    Description: Private Route Table ID
     Value: !Ref PrivateRouteTable
     Export:
       Name: !Sub "${PJCode}-PrivateRouteTable"
 
   InternetGatewayId:
-    Description: Internet Gateway ID
     Value: !Ref MyInternetGateway
     Export:
       Name: !Sub "${PJCode}-InternetGateway"
