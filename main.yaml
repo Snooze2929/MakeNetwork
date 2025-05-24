@@ -1,0 +1,22 @@
+AWSTemplateFormatVersion: '2010-09-09'
+Description: Main stack for network resources (VPC, Subnets, SGs)
+
+Parameters:
+  PJCode:
+    Type: String
+    Default: MakeNetwork
+
+Resources:
+  VPCStack:
+    Type: AWS::CloudFormation::Stack
+    Properties:
+      TemplateURL: https://snooze-cf-bucket.s3.amazonaws.com/projects/make-network/vpc.yaml
+      Parameters:
+        PJCode: !Ref PJCode
+
+  SGStack:
+    Type: AWS::CloudFormation::Stack
+    Properties:
+      TemplateURL: https://snooze-cf-bucket.s3.amazonaws.com/projects/make-network/sg.yaml
+      Parameters:
+        PJCode: !Ref PJCode

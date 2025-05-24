@@ -1,0 +1,67 @@
+AWSTemplateFormatVersion: '2010-09-09'
+Description: Security Groups
+
+Parameters:
+  PJCode:
+    Type: String
+    Default: MakeNetwork
+
+Resources:
+  InstanceSecurityGroupEc2:
+    Type: AWS::EC2::SecurityGroup
+    Properties:
+      GroupDescription: Allow http and host ssh
+      GroupName: ec2
+      VpcId:
+        Fn::ImportValue:
+          Fn::Sub: "${PJCode}-VpcId"
+      Tags:
+        - Key: Name
+          Value: !Join [ "-", [ !Ref PJCode, ec2 ] ]
+      SecurityGroupIngress:
+        - IpProtocol: tcp
+          FromPort: 80
+          ToPort: 80
+          CidrIp: 0.0.0.0/0
+        - IpProtocol: tcp
+          FromPort: 22
+          ToPort: 22
+          CidrIp: 0.0.0.0/0
+
+  InstanceSecurityGroupELB:
+    Type: AWS::EC2::SecurityGroup
+    Properties:
+      GroupDescription: Allow http and https
+      GroupName: ELB
+      VpcId:
+        Fn::ImportValue:
+          Fn::Sub: "${PJCode}-VpcId"
+      Tags:
+        - Key: Name
+          Value: !Join [ "-", [ !Ref PJCode, ELB ] ]
+      SecurityGroupIngress:
+        - IpProtocol: tcp
+          FromPort: 80
+          ToPort: 80
+          CidrIp: 0.0.0.0/0
+        - IpProtocol: tcp
+          FromPort: 443
+          ToPort: 443
+          CidrIp: 0.0.0.0/0
+
+  SecurityGroupRDS:
+    Type: AWS::EC2::SecurityGroup
+    Properties:
+      GroupDescription: Allow RDS
+      GroupName: RDS
+      VpcId:
+        Fn::ImportValue:
+          Fn::Sub: "${PJCode}-VpcId"
+      Tags:
+        - Key: Name
+          Value: !Join [ "-", [ !Ref PJCode, RDS ] ]
+      SecurityGroupIngress:
+        - IpProtocol: tcp
+          FromPort: 3306
+          ToPort: 3306
+          SourceSecurityGroupId: !Ref InstanceSecurityGroupEc2

@@ -1,0 +1,182 @@
+AWSTemplateFormatVersion: '2010-09-09'
+Description:
+  VPC & subnet & 3 securityGroup create
+
+# パラメータの設定
+Parameters:
+# それぞれの識別子を入力
+  PJCode:
+    Type: String
+    Default: MakeNetwork
+
+# VPC
+Resources:
+  MyVpc:
+    Type: AWS::EC2::VPC
+    Properties:
+      CidrBlock: 10.0.0.0/16
+      EnableDnsSupport: 'true'
+      EnableDnsHostnames: 'true'
+      InstanceTenancy: default
+      Tags:
+      - Key: Name
+        Value: !Join [ "-", [ !Ref PJCode, vpc ] ]
+
+# subnet
+  PublicSubnet1A:
+    Type: AWS::EC2::Subnet
+    Properties:
+      VpcId: !Ref MyVpc
+      CidrBlock: 10.0.0.0/24
+      AvailabilityZone: "ap-northeast-1a"
+      Tags:
+      - Key: Name
+        Value: !Join [ "-", [ !Ref PJCode, public-1a ] ]
+
+  PublicSubnet1C:
+    Type: AWS::EC2::Subnet
+    Properties:
+      VpcId: !Ref MyVpc
+      CidrBlock: 10.0.1.0/24
+      AvailabilityZone: "ap-northeast-1c"
+      Tags:
+      - Key: Name
+        Value: !Join [ "-", [ !Ref PJCode, public-1c ] ]
+
+  PrivateSubnet1A:
+    Type: AWS::EC2::Subnet
+    Properties:
+      VpcId: !Ref MyVpc
+      CidrBlock: 10.0.3.0/24
+      AvailabilityZone: "ap-northeast-1a"
+      Tags:
+      - Key: Name
+        Value: !Join [ "-", [ !Ref PJCode, private-1a ] ]
+
+  PrivateSubnet1C:
+    Type: AWS::EC2::Subnet
+    Properties:
+      VpcId: !Ref MyVpc
+      CidrBlock: 10.0.4.0/24
+      AvailabilityZone: "ap-northeast-1c"
+      Tags:
+      - Key: Name
+        Value: !Join [ "-", [ !Ref PJCode, private-1c ] ]
+
+# RputeTable
+  PublicRouteTable:
+    Type: AWS::EC2::RouteTable
+    Properties:
+      VpcId: !Ref MyVpc
+      Tags:
+      - Key: Name
+        Value: !Join [ "-", [ !Ref PJCode, public ] ]
+
+  PrivateRouteTable:
+    Type: AWS::EC2::RouteTable
+    Properties:
+      VpcId: !Ref MyVpc
+      Tags:
+      - Key: Name
+        Value: !Join [ "-", [ !Ref PJCode, private ] ]
+
+  PriSubnet1ARouteTableAssociation:
+    Type: AWS::EC2::SubnetRouteTableAssociation
+    Properties:
+      SubnetId: !Ref PrivateSubnet1A
+      RouteTableId: !Ref PrivateRouteTable
+
+  PriSubnet1CRouteTableAssociation:
+    Type: AWS::EC2::SubnetRouteTableAssociation
+    Properties:
+      SubnetId: !Ref PrivateSubnet1C
+      RouteTableId: !Ref PrivateRouteTable
+
+  PubSubnet1ARouteTableAssociation:
+    Type: AWS::EC2::SubnetRouteTableAssociation
+    Properties:
+      SubnetId: !Ref PublicSubnet1A
+      RouteTableId: !Ref PublicRouteTable
+
+  PubSubnet1CRouteTableAssociation:
+    Type: AWS::EC2::SubnetRouteTableAssociation
+    Properties:
+      SubnetId: !Ref PublicSubnet1C
+      RouteTableId: !Ref PublicRouteTable
+
+# InternetGateway
+  MyInternetGateway:
+    Type: "AWS::EC2::InternetGateway"
+    Properties:
+      Tags:
+      - Key: Name
+        Value: !Join [ "-", [ !Ref PJCode, igw ] ]
+  AttachGateway:
+    Type: AWS::EC2::VPCGatewayAttachment
+    Properties:
+      VpcId: !Ref MyVpc
+      InternetGatewayId: !Ref MyInternetGateway
+  MyRoute:
+    Type: AWS::EC2::Route
+    DependsOn: MyInternetGateway
+    Properties:
+      RouteTableId: !Ref PublicRouteTable
+      DestinationCidrBlock: 0.0.0.0/0
+      GatewayId: !Ref MyInternetGateway
+
+#SecurityGroup
+  InstanceSecurityGroupEc2:
+    Type: AWS::EC2::SecurityGroup
+    Properties:
+      GroupDescription: Allow http and host ssh
+      GroupName: ec2
+      VpcId: !Ref MyVpc
+      Tags:
+      - Key: Name
+        Value: !Join [ "-", [ !Ref PJCode, ec2 ] ]
+      SecurityGroupIngress:
+      - IpProtocol: tcp
+        FromPort: 80
+        ToPort: 80
+        CidrIp: 0.0.0.0/0
+
+      - IpProtocol: tcp
+        FromPort: 22
+        ToPort: 22
+        CidrIp: 0.0.0.0/0
+
+  InstanceSecurityGroupELB:
+    Type: AWS::EC2::SecurityGroup
+    Properties:
+      GroupDescription: Allow http and https
+      GroupName: ELB
+      VpcId: !Ref MyVpc
+      Tags:
+      - Key: Name
+        Value: !Join [ "-", [ !Ref PJCode, ELB ] ]
+      SecurityGroupIngress:
+      - IpProtocol: tcp
+        FromPort: 80
+        ToPort: 80
+        CidrIp: 0.0.0.0/0
+
+      - IpProtocol: tcp
+        FromPort: 443
+        ToPort: 443
+        CidrIp: 0.0.0.0/0
+
+  SecurityGroupRDS:
+    Type: AWS::EC2::SecurityGroup
+    Properties:
+      GroupDescription: Allow RDS
+      GroupName: RDS
+      VpcId: !Ref MyVpc
+      Tags:
+      - Key: Name
+        Value: !Join [ "-", [ !Ref PJCode, RDS ] ]
+      SecurityGroupIngress:
+      - IpProtocol: tcp
+        FromPort: 3306
+        ToPort: 3306
+        SourceSecurityGroupId: !Ref InstanceSecurityGroupEc2
+
