@@ -224,3 +224,18 @@ Outputs:
     Value: !Ref MyInternetGateway
     Export:
       Name: !Sub "${PJCode}-InternetGateway"
+
+  InstanceSecurityGroupEc2Id:
+    Value: !Ref InstanceSecurityGroupEc2
+    Export:
+      Name: !Sub "${PJCode}-InstanceSecurityGroupEc2"
+
+  InstanceSecurityGroupELBId:
+    Value: !Ref InstanceSecurityGroupELB
+    Export:
+      Name: !Sub "${PJCode}-InstanceSecurityGroupELB"
+
+  SecurityGroupRDSId:
+    Value: !Ref SecurityGroupRDS
+    Export:
+      Name: !Sub "${PJCode}-SecurityGroupRDS"
